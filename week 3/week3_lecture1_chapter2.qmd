@@ -215,4 +215,55 @@ unique(pop_vs_soda$pop)
 (says_pop * probability_s) / says_pop
 ```
 
-\
+Pop v. Soda - In Class
+
+Exploratory Analysis
+
+```{r}
+ggplot(pop_vs_soda, aes(x = region, fill = pop)) + geom_bar()
+```
+
+Step 1) Prior Probabilities
+
+```{r}
+priors <- c(
+  midwest = 0.21,
+  northeast = 0.17,
+  south = 0.38,
+  west = 0.24
+  )
+
+priors
+```
+
+Step 2) Regional Likelihoods
+
+```{r}
+pop_vs_soda %>% 
+  tabyl(pop, region) %>% 
+  adorn_percentages("col")
+```
+
+```{r}
+likelihoods <- pop_vs_soda %>% 
+  tabyl(pop, region) %>% 
+  adorn_percentages("col") %>%
+  filter(pop == "TRUE") %>% 
+  select(-pop) %>% 
+  unlist()
+
+likelihoods
+```
+
+3\) Marginal Prior Probability That A Person Uses The Word Pop
+
+```{r}
+prior_probability_says_pop <- sum(priors * likelihoods)
+prior_probability_says_pop
+```
+
+4\) Finding Posterior Probability P(S\|A)
+
+```{r}
+(priors[3] * likelihoods[3]) / prior_probability_says_pop
+```
