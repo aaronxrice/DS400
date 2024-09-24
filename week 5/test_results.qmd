@@ -104,9 +104,7 @@ P(\text{have disease} \mid \text{positive second test}) = \frac{P(\text{have dis
 $$
 
 The probability someone has the disease given two positive tests\
-P(B\|A1\*A2)
-Calculate overall probability of two positive tests (A1\*A2)
-P(A) for two positive test results\
+P(B\|A1\*A2) Calculate overall probability of two positive tests (A1\*A2) P(A) for two positive test results\
 Calculate P(B\|A) using Bayes' theorem for two positive tests
 
 ```{r}
