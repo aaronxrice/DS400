@@ -119,3 +119,5 @@ p_b_given_a_two_positive <- (p_a_given_b_two_positive * p_b) / p_a_two_positive
 
 cat("P(B|A for two positives):", p_b_given_a_two_positive, "\n")
 ```
+
+The likelihood of having the disease significantly increases given a second positive test
