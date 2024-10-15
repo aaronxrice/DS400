@@ -37,15 +37,62 @@ Below, insert a code chunk(s) and use `ggplot` to visualize the features of the 
 
 -   Type (fake vs real)
 
+    ```{r}
+    ggplot(data=fake_news, aes(x = type)) +
+      geom_bar()
+    ```
+
 -   Number of words in the title (numeric value)
+
+    ```{r}
+    fake_news <- fake_news %>%
+      mutate(title_length = nchar(title))
+
+    average_length <- fake_news %>%
+      group_by(type) %>%
+      summarise(avg_title_length = mean(title_length))
+      
+    ggplot(average_length, aes(x = type, y = avg_title_length, fill = type)) +
+      geom_bar(stat = "identity") +
+      labs(title = "Average Number of Characters in Article Titles (Real vs Fake)",
+           x = "News Type", 
+           y = "Average Title Length (Characters)") +
+      theme_minimal()
+    ```
 
 -   Negative associations (numeric value)
 
+    ```{r}
+    fake_news %>%
+      group_by(type) %>%
+      summarise(avg_percentage_negative = mean(negative)) %>% 
+      adorn_totals("row")
+    ```
+
 -   Exclamation point in the title (true vs false)
+
+    ```{r}
+    fake_news <- fake_news %>%
+      mutate(title_has_exclamation = ifelse(grepl("!", title), "Yes", "No"))
+
+    exclamation_counts <- fake_news %>%
+      filter(title_has_exclamation == "Yes") %>%
+      group_by(type) %>%
+      summarise(count = n())
+
+    ggplot(exclamation_counts, aes(x = type, y = count, fill = type)) +
+      geom_bar(stat = "identity", fill = "blue") +
+      labs(title = "Number of Real Articles with Exclamation Points in Title",
+           x = "Type of News Story",
+           y = "Count") +
+      theme_minimal()
+    ```
 
 ### Interpretation of Visualization - 2 points
 
 Below, write a few sentences explaining whether or not this ***new news article*** is true or fake solely using your visualization above
+
+*The article is likely fake if over 3% of the words in the article have negative connotation, the title has over 65 characters, or there is an exclamation point in the title*
 
 ### Perform Naive Bayes Classification - 3 points
 
@@ -53,32 +100,130 @@ Based on these three features (15-word title, 6% of its words have negative asso
 
 Below, insert the code chunks and highlight your answer
 
+```{r}
+naive_article_model <- naiveBayes(type ~ title_char + negative + title_excl, data = fake_news)
+
+sample_article <- data.frame(title_char = 15, negative = 6, title_excl = 0)
+
+predict(naive_article_model, newdata = sample_article, type = "raw")
+
+fake_news <- fake_news %>% 
+  mutate(predicted_type = predict(naive_article_model, newdata = .))
+```
+
+*Based on the three features, the model has predicted a 44% chance of the article being fake and a 56% chance of the article being real.*
+
 ### Break Down the Model - 5 points
 
 Similar to the penguins example, we are going to break down the model we created above. To do this we need to find:
 
 -   Probability(15 - word title\| article is real) using `dnorm()`
 
+```{r}
+real_news <- fake_news %>%
+  filter(type == "real") %>%
+  select(title_char, type, negative, title_excl)
+
+fake_news_ <- fake_news %>%
+  filter(type == "fake") %>%
+  select(title_char, type, negative, title_excl)
+
+mean(real_news$title_char)
+sd(real_news$title_char)
+
+dnorm(15, 63.23, 18.8)
+```
+
 -   Probability(6% of words have negative associations \| article is real) using `dnorm()`
+
+```{r}
+mean(real_news$negative)
+sd(real_news$negative)
+
+dnorm(6, 2.8, 1.19)
+```
 
 -   Probability(no exclamation point in title \| article is real)
 
-    -   Multiply these probabilities and save as the object **`probs_real`**
+```{r}
+mean(real_news$title_excl)
+sd(real_news$title_excl)
+
+dnorm(0, 0.033, 0.235)
+```
+
+-   Multiply these probabilities and save as the object **`probs_real`**
+
+```{r}
+probs_real <- 0.0008 * 0.01 * 1.67
+```
 
 -   Probability(15 - word title\| article is fake) using `dnorm()`
 
+```{r}
+mean(fake_news_$title_char)
+sd(fake_news_$title_char)
+
+dnorm(15, 75.03, 21.17)
+```
+
 -   Probability(6% of words have negative associations \| article is fake) using `dnorm()`
+
+```{r}
+mean(fake_news_$negative)
+sd(fake_news_$negative)
+
+dnorm(6, 3.606, 1.47)
+```
 
 -   Probability(no exclamation point in title \| article is fake)
 
-    -   Multiply these probabilities and save as the object **`probs_fake`**
+```{r}
+mean(fake_news_$title_excl)
+sd(fake_news_$title_excl)
+dnorm(0, 0.32, 0.57)
+```
+
+-   Multiply these probabilities and save as the object **`probs_fake`**
+
+```{r}
+probs_fake <- 0.0003 * 0.072 * 0.6
+```
 
 Lastly divide your **`probs_real`** by the sum of **`probs_real`** and **`probs_fake`** to see if you can reproduce the output from `naiveBayes()` above
+
+```{r}
+sum_probs <- probs_real + probs_fake
+probs_real / sum_probs
+```
 
 ### Confusion Matrix - 2 points
 
 Calculate a confusion matrix by first mutating a column to fake_news called `predicted_type` . Then, use `tabyl()` to create the matrix
 
+```{r}
+predicted_type <- fake_news %>% 
+  tabyl(type, predicted_type) %>% 
+  adorn_percentages("row") %>% 
+  adorn_pct_formatting(digits = 2) %>% 
+  adorn_ns
+predicted_type
+```
+
+*The model had a difficult time determining if the article was fake, as the confusion matrix shows 65% of fake articles were predicted to be real.*
+
 ### How can our model be improved? - 2 points
 
 Think about the results of the confusion matrix, is the model performing well? Try creating a new model that uses all of the features in the fake_news dataset to make a prediction on type (fake vs true). Then, create a new confusion matrix to see if the model improves.
+
+```{r}
+fake_news$title_multiple_excl <- ifelse(grepl(".*!.*!", fake_news$title), "yes", "no")
+
+new_naive_article_model <- naiveBayes(type ~ title_char + fear + title_multiple_excl, data = fake_news)
+
+sample_article <- data.frame(title_char = 15, negative = 6, title_multiple_excl = "yes")
+
+predict(new_naive_article_model, newdata = sample_article, type = "raw")
+```
+
+*to narrow down the model, I added a column to determine if the article has more than one exclamation point in the title*
